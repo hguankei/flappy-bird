@@ -119,10 +119,10 @@
                     playSound(flySound.dom, flySound.src);
 
                 } else if (status === 2) {//已结束
-                    if(e.offsetX > 40 &&
-                        e.offsetX < 40 + restartBtnWidth &&
-                        e.offsetY > 300 &&
-                        e.offsetY < 300 + restartBtnHeight) {
+                    if(e.layerX > 40 &&
+                        e.layerX < 40 + restartBtnWidth &&
+                        e.layerY > 300 &&
+                        e.layerY < 300 + restartBtnHeight) {
                         game.restart();
                     }
                 }
