@@ -19,7 +19,7 @@
         pipeMinHeight = 50,//管道最低高度
         pipeMaxHeight = 250,//管道最高高度
         pipeMaxNum = 3,//每次生成的管道数
-        pipeSpace = 120,//上下管道空隙
+        pipeSpace = 200,//上下管道空隙
         pipeInterval = pipeWidth + 140,//管道间隔
         pipe = [],//管道位置序列
 
@@ -32,8 +32,11 @@
         gravity = 0.4,//重力加速度
         birdYSpeed = 0,//初始化鸟Y轴的运动速度
 
-        highScore = 0,//最高分
-        score = 0;//当前分数
+        highScore = localStorage.n_fBHighScore || 0,//最高分
+        score = 0,//当前分数
+
+        restartBtnWidth = 131,//重新开始按钮
+        restartBtnHeight = 74;
 
     //游戏场景
     var c = document.getElementById('gameContent'),
@@ -41,6 +44,8 @@
 
     c.width = boxWidth;
     c.height = boxHeight;
+    ctx.font = 'bold 40px Arial,sans-serif';
+    ctx.fillStyle = '#fff';
 
     //游戏场景图片
     var bg = new Image(),
@@ -49,6 +54,32 @@
     bg.src        = 'img/bg.png';
     ground.src    = 'img/ground.png';
     imgSprite.src = 'img/flappy_packer.png';
+
+    //游戏音效
+    var flySound = {//飞行音效
+            dom: document.getElementById('J_flySound'),
+            src: 'sounds/wing.mp3'
+        },
+        scoreSound = {//得分音效
+            dom: document.getElementById('J_scoreSound'),
+            src: 'sounds/point.mp3'
+        },
+        crashSound = {//碰撞音效
+            dom: document.getElementById('J_crashSound'),
+            src: 'sounds/hit.mp3'
+        },
+        endSound = {//结束音效
+            dom: document.getElementById('J_endSound'),
+            src: 'sounds/die.mp3'
+        },
+        startSound = {//开始音效
+            dom: document.getElementById('J_startSound'),
+            src: 'sounds/swooshing.mp3'
+        };
+
+    function playSound(sound, src) {//播放音频
+        sound.src = src;
+    }
 
     (function () {//初始化
 
@@ -83,12 +114,17 @@
                     clearInterval(initBirdInterval);
                     clearInterval(game.groundInterval);
                     game.start();
-                    game.status = 1;
                 } else if (status === 1) {//进行中
 
+                    playSound(flySound.dom, flySound.src);
+
                 } else if (status === 2) {//已结束
-                    game.start();
-                    game.status = 1;
+                    if(e.offsetX > 40 &&
+                        e.offsetX < 40 + restartBtnWidth &&
+                        e.offsetY > 300 &&
+                        e.offsetY < 300 + restartBtnHeight) {
+                        game.restart();
+                    }
                 }
             }
         }
@@ -104,29 +140,57 @@
 
         start: function () {
 
+            this.status = 1;
             for (var i = 0; i < pipeMaxNum; i += 1) {
                 this.createPipe(i);//初始化管道数据
             }
-            birdPosition = [birdX, birdY];
 
             this.drawGround();
+
+            playSound(startSound.dom, startSound.src);
+
             this.gameInterval = setInterval(this.run, 1000 / fps);
+        },
+        restart: function () {//重新开始游戏
+
+            ctx.font = 'bold 40px Arial,sans-serif';
+            //初始化数据
+            birdPosition = [birdX, birdY];
+            score = 0;
+
+            this.start();
         },
         run: function () {
 
             if (game.status === 2) {
                 game.end();
+                return false;
             }
 
             birdYSpeed = birdYSpeed + gravity;
             game.drawScene();
             game.drawBirdSport();
             game.birdCrash();
+            game.drawScore();
 
         },
         end: function () {
+            playSound(endSound.dom, endSound.src);
+
             clearInterval(this.gameInterval);
             clearInterval(this.groundInterval);
+
+            if (highScore < score) {
+                highScore = score;
+                localStorage.n_fBHighScore = highScore;
+            }
+
+            ctx.drawImage(imgSprite, 16, 319, 480, 107, boxWidth / 2 - 120, 80, 240, 54);
+            ctx.drawImage(imgSprite, 15, 6, 567, 286, boxWidth / 2 - 142, 140, 284, 143);
+            ctx.drawImage(imgSprite, 463, 463, restartBtnWidth * 2, restartBtnHeight * 2, 40, 300, restartBtnWidth, restartBtnHeight);
+            ctx.font = 'bold 24px Arial,sans-serif';
+            ctx.fillText(score, 255, 200);
+            ctx.fillText(highScore, 255, 253);
         },
 
         drawScene: function () {//绘制场景，不包括动态地面
@@ -217,27 +281,45 @@
             var i, len = pipe.length,
                 birdRightX = birdPosition[0] + birdWidth,
                 birdBottomY = birdPosition[1] + birdHeight,
-                groundTop = boxHeight - groundHeight;
+                groundTop = boxHeight - groundHeight,
+
+                pipeRight;
 
             //循环判断是否碰撞管道
             for (i = 0; i < len; i += 1) {
+
+                pipeRight = pipe[i][0] + pipeWidth;
+
+                if (birdRightX === pipeRight + 1) {
+                    playSound(scoreSound.dom, scoreSound.src);
+                    this.updateScore(i);//通过一根管道加一分
+                }
+
                 //如果未到
                 if (birdRightX < pipe[i][0]) {
                     continue;
                 }
                 //如果碰撞
                 if ((birdRightX > pipe[i][0] &&
-                    birdPosition[0] < pipe[i][0] + pipeWidth) &&
+                    birdPosition[0] < pipeRight) &&
                     (birdPosition[1] < groundTop - pipe[i][1] - pipeSpace ||
                         birdBottomY > groundTop - pipe[i][1])) {
+                    playSound(crashSound.dom, crashSound.src);
                     this.status = 2;//游戏结束
                     break;
                 }
             }
 
             if (birdBottomY > groundTop) {//判断是否碰撞地面
+                playSound(crashSound.dom, crashSound.src);
                 this.status = 2;//游戏结束
             }
+        },
+        updateScore: function () {//更新分数
+            score += 1;
+        },
+        drawScore: function () {//绘制分数
+            ctx.fillText(score, boxWidth / 2 - 20, 120);
         }
     };
 
