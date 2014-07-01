@@ -32,7 +32,7 @@
         gravity = 0.4,//重力加速度
         birdYSpeed = 0,//初始化鸟Y轴的运动速度
 
-        highScore = localStorage.n_fBHighScore || 0,//最高分
+        highScore = localStorage.n_fbHighScore || 0,//最高分
         score = 0,//当前分数
 
         restartBtnWidth = 131,//重新开始按钮
@@ -182,7 +182,7 @@
 
             if (highScore < score) {
                 highScore = score;
-                localStorage.n_fBHighScore = highScore;
+                localStorage.n_fbHighScore = highScore;
             }
 
             ctx.drawImage(imgSprite, 16, 319, 480, 107, boxWidth / 2 - 120, 80, 240, 54);
